@@ -1,5 +1,7 @@
 # GameSys
 
+> Recebeu este projeto? Comece pelo [HANDOFF.md](HANDOFF.md).
+
 Sistema de gerenciamento de jogos para um grupo fechado (família/amigos), com login por convite, importação automática da biblioteca da Steam e um catálogo colaborativo de jogos. Construído com Next.js, React e TypeScript, e **independente de provedor**: roda sobre Postgres, MySQL/MariaDB ou SQLite/Turso, com imagens em disco local ou em qualquer storage S3-compatível.
 
 | Camada | Tecnologia | Opções suportadas |
