@@ -6,28 +6,34 @@ Você recebe **só o código**. Nenhuma conta, banco, chave ou dado de usuário 
 
 ## 1. Tenha a sua própria cópia do repositório
 
-O repositório original é privado e o seu acesso a ele pode ser removido depois da entrega. Por isso, crie um repositório seu e mova o código para ele:
+O repositório original é público. Para ter um repositório seu, use uma destas formas:
 
-```bash
-git clone https://github.com/pcandradex/GameSys.git
-cd GameSys
-# crie um repositório vazio na sua conta do GitHub (sem README) e:
-git remote set-url origin https://github.com/<seu-usuario>/<seu-repo>.git
-git push -u origin main
-```
-
-Não use o botão **Fork**: o fork de um repositório privado é apagado se o seu acesso ao original for removido.
+- **Fork:** botão **Fork** em <https://github.com/pcandradex/GameSys>, e depois clone o seu fork.
+- **Repositório independente** (sem vínculo com o original, inclusive se for privado):
+  ```bash
+  git clone https://github.com/pcandradex/GameSys.git
+  cd GameSys
+  # crie um repositório vazio na sua conta do GitHub (sem README) e:
+  git remote set-url origin https://github.com/<seu-usuario>/<seu-repo>.git
+  git push -u origin main
+  ```
 
 ## 2. Rode localmente (cerca de 5 minutos, sem criar conta nenhuma)
 
-Requisito: Node.js 20 ou superior.
+Requisitos: Node.js 20 ou superior e Git. Os comandos abaixo funcionam no terminal do macOS/Linux, no Git Bash e no PowerShell.
 
 ```bash
 npm install
 cp .env.example .env.local
 ```
 
-Em `.env.local`, preencha só `BETTER_AUTH_SECRET`, gerado com `openssl rand -base64 32` ou qualquer texto aleatório com mais de 32 caracteres. O resto já vem pronto para rodar com SQLite e imagens em disco.
+Em `.env.local`, preencha só o `BETTER_AUTH_SECRET` com um texto aleatório longo. Para gerar um:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+```
+
+O resto já vem pronto para rodar com SQLite e imagens em disco.
 
 ```bash
 mkdir data
@@ -37,6 +43,8 @@ npm run dev
 ```
 
 Abra `http://localhost:3000` e entre com o admin criado. Se o login funcionar e você conseguir cadastrar um jogo com imagem, está tudo certo.
+
+Se rodar em outra porta ou endereço, ajuste o `APP_URL` no `.env.local` para o mesmo valor (ex.: `APP_URL=http://localhost:3001`). Caso contrário, o login falha com "Invalid origin".
 
 Sem SMTP configurado, os e-mails de convite e de recuperação de senha **não são enviados**: o link aparece no terminal onde está rodando o `npm run dev`.
 
@@ -60,9 +68,16 @@ Gere um `BETTER_AUTH_SECRET` **novo** para produção, diferente do usado localm
 2. Em Settings → Environment Variables, cadastre as variáveis do passo 3, mais `APP_URL=https://seu-dominio`.
 3. Rode as migrações apontando para o banco de produção. Faça isso no seu computador, com a `DATABASE_URL` de produção:
    ```bash
+   # macOS / Linux / Git Bash
    DATABASE_URL="postgres://..." npm run db:migrate
    DATABASE_URL="postgres://..." npm run create-admin -- seu@email.com "Seu Nome"
    ```
+   ```powershell
+   # PowerShell
+   $env:DATABASE_URL="postgres://..."; npm run db:migrate
+   npm run create-admin -- seu@email.com "Seu Nome"
+   ```
+   O `create-admin` também precisa de `APP_URL`, `BETTER_AUTH_SECRET` e `SMTP_*` de produção para o link do e-mail sair certo. Defina essas variáveis do mesmo jeito.
    Sem a senha no comando, você recebe por e-mail um link para defini-la. Por isso o SMTP precisa já estar configurado.
 4. Faça o deploy.
 

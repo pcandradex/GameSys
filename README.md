@@ -22,7 +22,7 @@ Sistema de gerenciamento de jogos para um grupo fechado (família/amigos), com l
 ```bash
 npm install
 cp .env.example .env.local        # já vem com DATABASE_URL=file:./data/gamesys.db
-# preencha BETTER_AUTH_SECRET (openssl rand -base64 32)
+# preencha BETTER_AUTH_SECRET (veja o HANDOFF.md para gerar um)
 mkdir data
 npm run db:migrate
 npm run create-admin -- voce@exemplo.com "Seu Nome" "uma-senha-forte"
