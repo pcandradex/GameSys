@@ -3,8 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
-import { extractGameCoverPath } from "@/lib/game-image";
+import { authClient } from "@/lib/auth-client";
+import { deleteGame } from "@/app/dashboard/actions";
 import { initialFor, resolveDisplayName } from "@/lib/display-name";
 import { isRecentlyAdded } from "@/lib/group-games";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -26,7 +26,6 @@ export default function DashboardClient({
   games
 }: DashboardClientProps) {
   const router = useRouter();
-  const supabase = createClient();
 
   const [darkMode, setDarkMode] = useState(() => {
     if (typeof window === "undefined") {
@@ -86,7 +85,7 @@ export default function DashboardClient({
           game.owners.some(
             (owner) =>
               owner.nickname?.toLowerCase().includes(term) ||
-              owner.full_name?.toLowerCase().includes(term) ||
+              owner.name?.toLowerCase().includes(term) ||
               owner.email.toLowerCase().includes(term)
           )
       );
@@ -94,7 +93,7 @@ export default function DashboardClient({
 
   async function handleLogout() {
     setLoggingOut(true);
-    await supabase.auth.signOut();
+    await authClient.signOut();
     router.push("/");
     router.refresh();
   }
@@ -114,24 +113,15 @@ export default function DashboardClient({
 
     setDeletingId(game.manageGameId);
 
-    const { error } = await supabase
-      .from("games")
-      .delete()
-      .eq("id", game.manageGameId);
+    const { error } = await deleteGame(game.manageGameId);
+
+    setDeletingId(null);
 
     if (error) {
-      window.alert("Não foi possível excluir o jogo.");
-      setDeletingId(null);
+      window.alert(error);
       return;
     }
 
-    const path = extractGameCoverPath(game.manageImageUrl);
-
-    if (path) {
-      await supabase.storage.from("game-covers").remove([path]);
-    }
-
-    setDeletingId(null);
     router.refresh();
   }
 

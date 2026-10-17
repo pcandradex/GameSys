@@ -1,6 +1,6 @@
 interface DisplayNameProfile {
   nickname?: string | null;
-  full_name?: string | null;
+  name?: string | null;
   email: string;
 }
 
@@ -11,7 +11,7 @@ export function resolveDisplayName(
     return "";
   }
 
-  return profile.nickname?.trim() || profile.full_name?.trim() || profile.email;
+  return profile.nickname?.trim() || profile.name?.trim() || profile.email;
 }
 
 export function initialFor(name: string): string {

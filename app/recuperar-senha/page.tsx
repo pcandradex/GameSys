@@ -2,7 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/client";
+import { authClient } from "@/lib/auth-client";
 
 export default function RecuperarSenha() {
   const [email, setEmail] = useState("");
@@ -10,15 +10,14 @@ export default function RecuperarSenha() {
   const [message, setMessage] = useState("");
   const [sent, setSent] = useState(false);
 
-  const supabase = createClient();
-
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     setLoading(true);
     setMessage("");
 
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    const { error } = await authClient.requestPasswordReset({
+      email,
       redirectTo: `${window.location.origin}/alterar-senha`
     });
 

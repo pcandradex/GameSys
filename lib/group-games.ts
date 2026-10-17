@@ -7,7 +7,7 @@ export function isRecentlyAdded(addedAt: string): boolean {
 
 interface OwnerProfileFields {
   nickname: string | null;
-  full_name: string | null;
+  name: string | null;
   email: string;
 }
 
@@ -34,7 +34,6 @@ export interface GroupedGame {
   addedAt: string;
   owners: OwnerProfile[];
   manageGameId: string | null;
-  manageImageUrl: string | null;
   familyShared: boolean | null;
 }
 
@@ -90,7 +89,7 @@ export function groupGamesByTitle(
       seen.add(row.created_by);
       owners.push({
         id: row.created_by,
-        ...(row.creator ?? { nickname: null, full_name: null, email: "" })
+        ...(row.creator ?? { nickname: null, name: null, email: "" })
       });
     }
 
@@ -106,7 +105,6 @@ export function groupGamesByTitle(
       addedAt,
       owners,
       manageGameId: manageRow?.id ?? null,
-      manageImageUrl: manageRow?.image_url ?? null,
       familyShared
     });
   }

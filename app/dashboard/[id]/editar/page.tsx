@@ -1,6 +1,8 @@
 import { notFound, redirect } from "next/navigation";
 import EditGameForm from "@/components/EditGameForm";
-import { getCurrentProfile } from "@/lib/supabase/require-admin";
+import { requireUser } from "@/lib/session";
+import { canManageGame, getGame } from "@/lib/data/games";
+import { publicUrl } from "@/lib/storage";
 
 export default async function EditarJogo({
   params
@@ -8,25 +10,25 @@ export default async function EditarJogo({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const { supabase, user, isAdmin } = await getCurrentProfile();
-
-  if (!user) {
-    redirect("/");
-  }
-
-  const { data: game } = await supabase
-    .from("games")
-    .select("id, title, description, image_url, created_by")
-    .eq("id", id)
-    .single();
+  const user = await requireUser();
+  const game = await getGame(id);
 
   if (!game) {
     notFound();
   }
 
-  if (game.created_by !== user.id && !isAdmin) {
+  if (!canManageGame(user, game)) {
     redirect("/dashboard");
   }
 
-  return <EditGameForm game={game} />;
+  return (
+    <EditGameForm
+      game={{
+        id: game.id,
+        title: game.title,
+        description: game.description,
+        image_url: publicUrl(game.image)
+      }}
+    />
+  );
 }

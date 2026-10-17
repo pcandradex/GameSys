@@ -3,11 +3,19 @@ node_modules/
 out/
 dist/
 *.log
-.env
-.env.local
-.env*.local
 .DS_Store
 .vercel
-.env*
-supabase/.temp
 tsconfig.tsbuildinfo
+
+# Variáveis de ambiente (o .env.example é versionado)
+.env
+.env*.local
+.env.*
+!.env.example
+
+# Dados locais: banco SQLite e uploads do STORAGE_DRIVER=local
+/data/
+/uploads/
+
+# Config local do Supabase CLI (legado)
+supabase/.temp

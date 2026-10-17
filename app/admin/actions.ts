@@ -1,65 +1,96 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { getCurrentProfile } from "@/lib/supabase/require-admin";
+import { eq } from "drizzle-orm";
+import { auth, siteUrl } from "@/lib/auth";
+import { db, schema } from "@/lib/db";
+import { getCurrentUser } from "@/lib/session";
+import { removeImage } from "@/lib/storage";
 
 export type InviteState = {
   error?: string;
   success?: string;
 };
 
+async function sendInviteEmail(email: string) {
+  // O mesmo endpoint de "esqueci a senha": o e-mail sai com o texto de
+  // convite porque o usuário ainda não tem senha (ver lib/auth.ts).
+  await auth().api.requestPasswordReset({
+    body: { email, redirectTo: `${siteUrl()}/alterar-senha` }
+  });
+}
+
 export async function inviteUser(
   _prevState: InviteState,
   formData: FormData
 ): Promise<InviteState> {
-  const { user, isAdmin } = await getCurrentProfile();
+  const user = await getCurrentUser();
 
-  if (!user || !isAdmin) {
+  if (!user?.isAdmin) {
     return { error: "Apenas administradores podem convidar usuários." };
   }
 
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
-  const fullName = String(formData.get("fullName") ?? "").trim();
+  const fullName = String(formData.get("fullName") ?? "").trim().slice(0, 255);
 
-  if (!email || !email.includes("@")) {
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return { error: "Informe um e-mail válido." };
   }
 
-  const siteUrl = (
-    process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"
-  ).replace(/\/+$/, "");
+  const [existing] = await db
+    .select({ id: schema.users.id })
+    .from(schema.users)
+    .where(eq(schema.users.email, email))
+    .limit(1);
 
-  const admin = createAdminClient();
+  if (existing) {
+    return { error: "Este e-mail já possui uma conta no GameSys." };
+  }
 
-  const { error } = await admin.auth.admin.inviteUserByEmail(email, {
-    data: {
-      full_name: fullName || null,
-      invited_by: user.id
-    },
-    redirectTo: `${siteUrl}/alterar-senha`
-  });
+  try {
+    await db.insert(schema.users).values({
+      id: crypto.randomUUID(),
+      name: fullName,
+      email,
+      role: "user",
+      invitedBy: user.id
+    });
 
-  if (error) {
-    console.error("inviteUserByEmail failed:", error);
-
-    const message = error.message.toLowerCase();
-    const alreadyExists = message.includes("already");
-    const rateLimited =
-      message.includes("rate limit") || error.code === "over_email_send_rate_limit";
-
+    await sendInviteEmail(email);
+  } catch (err) {
+    console.error("inviteUser failed:", err);
     return {
-      error: alreadyExists
-        ? "Este e-mail já possui uma conta no GameSys."
-        : rateLimited
-          ? "Limite de e-mails do Supabase atingido. Espere um pouco e tente de novo (ou configure um SMTP próprio para não depender desse limite)."
-          : "Não foi possível enviar o convite. Tente novamente."
+      error:
+        "Não foi possível enviar o convite. Confira a configuração de SMTP e use “Reenviar convite”."
     };
   }
 
   revalidatePath("/admin");
-
   return { success: `Convite enviado para ${email}.` };
+}
+
+export type ResendInviteState = InviteState;
+
+export async function resendInvite(
+  _prevState: ResendInviteState,
+  formData: FormData
+): Promise<ResendInviteState> {
+  const user = await getCurrentUser();
+
+  if (!user?.isAdmin) {
+    return { error: "Apenas administradores podem reenviar convites." };
+  }
+
+  const email = String(formData.get("email") ?? "");
+
+  try {
+    await sendInviteEmail(email);
+  } catch (err) {
+    console.error("resendInvite failed:", err);
+    return { error: "Falha ao reenviar." };
+  }
+
+  return { success: "Reenviado." };
 }
 
 export type DeleteUserState = {
@@ -71,9 +102,9 @@ export async function deleteUser(
   _prevState: DeleteUserState,
   formData: FormData
 ): Promise<DeleteUserState> {
-  const { user, isAdmin } = await getCurrentProfile();
+  const user = await getCurrentUser();
 
-  if (!user || !isAdmin) {
+  if (!user?.isAdmin) {
     return { error: "Apenas administradores podem remover usuários." };
   }
 
@@ -87,14 +118,38 @@ export async function deleteUser(
     return { error: "Você não pode remover a própria conta." };
   }
 
-  const admin = createAdminClient();
-  const { error } = await admin.auth.admin.deleteUser(targetId);
+  const [target] = await db
+    .select({ image: schema.users.image })
+    .from(schema.users)
+    .where(eq(schema.users.id, targetId))
+    .limit(1);
 
-  if (error) {
+  if (!target) {
+    return { error: "Usuário não encontrado." };
+  }
+
+  const ownedImages = await db
+    .select({ image: schema.games.image })
+    .from(schema.games)
+    .where(eq(schema.games.createdBy, targetId));
+
+  try {
+    // Exclusão explícita em vez de depender de ON DELETE CASCADE: nem todo
+    // SQLite/Turso está com foreign keys ligadas.
+    await db.delete(schema.games).where(eq(schema.games.createdBy, targetId));
+    await db.delete(schema.sessions).where(eq(schema.sessions.userId, targetId));
+    await db.delete(schema.accounts).where(eq(schema.accounts.userId, targetId));
+    await db.delete(schema.users).where(eq(schema.users.id, targetId));
+  } catch (err) {
+    console.error("deleteUser failed:", err);
     return { error: "Não foi possível remover o usuário. Tente novamente." };
   }
 
-  revalidatePath("/admin");
+  await Promise.all(
+    [target.image, ...ownedImages.map((g) => g.image)].map((image) => removeImage(image))
+  );
 
+  revalidatePath("/admin");
+  revalidatePath("/dashboard");
   return { success: "Usuário removido." };
 }

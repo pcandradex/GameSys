@@ -2,24 +2,38 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import InviteForm from "@/components/InviteForm";
 import DeleteUserButton from "@/components/DeleteUserButton";
-import { getCurrentProfile } from "@/lib/supabase/require-admin";
+import ResendInviteButton from "@/components/ResendInviteButton";
+import { and, desc, eq } from "drizzle-orm";
+import { db, schema } from "@/lib/db";
+import { requireUser } from "@/lib/session";
 import { resolveDisplayName } from "@/lib/display-name";
 
 export default async function AdminPage() {
-  const { supabase, user, isAdmin } = await getCurrentProfile();
+  const user = await requireUser();
 
-  if (!user) {
-    redirect("/");
-  }
-
-  if (!isAdmin) {
+  if (!user.isAdmin) {
     redirect("/dashboard");
   }
 
-  const { data: profiles } = await supabase
-    .from("profiles")
-    .select("id, email, nickname, full_name, role, created_at")
-    .order("created_at", { ascending: false });
+  const { users, accounts } = schema;
+
+  // Convite pendente = usuário que ainda não definiu senha (sem credencial).
+  const profiles = await db
+    .select({
+      id: users.id,
+      email: users.email,
+      nickname: users.nickname,
+      name: users.name,
+      role: users.role,
+      createdAt: users.createdAt,
+      credentialId: accounts.id
+    })
+    .from(users)
+    .leftJoin(
+      accounts,
+      and(eq(accounts.userId, users.id), eq(accounts.providerId, "credential"))
+    )
+    .orderBy(desc(users.createdAt));
 
   return (
     <main className="admin-page">
@@ -56,13 +70,14 @@ export default async function AdminPage() {
                   <th>Nickname</th>
                   <th>E-mail</th>
                   <th>Papel</th>
+                  <th>Status</th>
                   <th>Criado em</th>
                   <th>Ações</th>
                 </tr>
               </thead>
 
               <tbody>
-                {profiles?.map((profile) => (
+                {profiles.map((profile) => (
                   <tr key={profile.id}>
                     <td>{resolveDisplayName(profile)}</td>
                     <td>{profile.email}</td>
@@ -75,12 +90,17 @@ export default async function AdminPage() {
                         {profile.role === "admin" ? "Admin" : "Usuário"}
                       </span>
                     </td>
+                    <td>{profile.credentialId ? "Ativo" : "Convite pendente"}</td>
                     <td>
-                      {new Date(profile.created_at).toLocaleDateString(
+                      {profile.createdAt.toLocaleDateString(
                         "pt-BR"
                       )}
                     </td>
                     <td>
+                      {!profile.credentialId && (
+                        <ResendInviteButton email={profile.email} />
+                      )}
+
                       {profile.id !== user.id && (
                         <DeleteUserButton
                           userId={profile.id}
@@ -91,9 +111,9 @@ export default async function AdminPage() {
                   </tr>
                 ))}
 
-                {!profiles?.length && (
+                {!profiles.length && (
                   <tr>
-                    <td colSpan={5} className="admin-empty">
+                    <td colSpan={6} className="admin-empty">
                       Nenhum usuário ainda.
                     </td>
                   </tr>
@@ -101,11 +121,6 @@ export default async function AdminPage() {
               </tbody>
             </table>
           </div>
-
-          <p className="admin-subtitle">
-            Status do convite (pendente/aceito) fica visível no painel do
-            Supabase em Authentication → Users.
-          </p>
         </div>
       </section>
     </main>

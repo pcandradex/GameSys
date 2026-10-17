@@ -2,24 +2,21 @@
 
 import { ChangeEvent, FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { updateProfile } from "@/app/dashboard/actions";
 import { initialFor } from "@/lib/display-name";
 
 interface AccountFormProps {
-  userId: string;
   email: string;
   initialNickname: string;
   initialAvatarUrl: string | null;
 }
 
 export default function AccountForm({
-  userId,
   email,
   initialNickname,
   initialAvatarUrl
 }: AccountFormProps) {
   const router = useRouter();
-  const supabase = createClient();
 
   const [nickname, setNickname] = useState(initialNickname);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
@@ -43,42 +40,21 @@ export default function AccountForm({
     setSuccess("");
     setLoading(true);
 
-    let avatarUrl = initialAvatarUrl;
+    const formData = new FormData();
+    formData.set("nickname", nickname);
+    if (avatarFile) formData.set("avatar", avatarFile);
 
-    if (avatarFile) {
-      const extension = avatarFile.name.split(".").pop() || "jpg";
-      const path = `${userId}/avatar.${extension}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from("avatars")
-        .upload(path, avatarFile, { upsert: true });
-
-      if (uploadError) {
-        setError("Não foi possível enviar a foto. Tente novamente.");
-        setLoading(false);
-        return;
-      }
-
-      const {
-        data: { publicUrl }
-      } = supabase.storage.from("avatars").getPublicUrl(path);
-
-      avatarUrl = `${publicUrl}?t=${Date.now()}`;
-    }
-
-    const { error: updateError } = await supabase
-      .from("profiles")
-      .update({ nickname: nickname.trim() || null, avatar_url: avatarUrl })
-      .eq("id", userId);
+    const result = await updateProfile(formData);
 
     setLoading(false);
 
-    if (updateError) {
-      setError("Não foi possível salvar o perfil. Tente novamente.");
+    if (result.error) {
+      setError(result.error);
       return;
     }
 
-    setSuccess("Perfil atualizado!");
+    setAvatarFile(null);
+    setSuccess(result.success ?? "Perfil atualizado!");
     router.refresh();
   }
 

@@ -9,6 +9,16 @@ export interface GameFormValues {
   imageFile: File | null;
 }
 
+export const MAX_IMAGE_MB = 4;
+
+export function toGameFormData({ title, description, imageFile }: GameFormValues): FormData {
+  const formData = new FormData();
+  formData.set("title", title);
+  formData.set("description", description);
+  if (imageFile) formData.set("image", imageFile);
+  return formData;
+}
+
 interface GameFormProps {
   heading: string;
   subheading: string;
@@ -52,6 +62,11 @@ export default function GameForm({
 
     if (!title.trim()) {
       setMessage("Informe o título do jogo.");
+      return;
+    }
+
+    if (imageFile && imageFile.size > MAX_IMAGE_MB * 1024 * 1024) {
+      setMessage(`A imagem deve ter no máximo ${MAX_IMAGE_MB} MB.`);
       return;
     }
 

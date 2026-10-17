@@ -2,7 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/client";
+import { authClient } from "@/lib/auth-client";
 import { syncSteamLibraryForCurrentUser } from "@/app/dashboard/conta/steam-actions";
 
 export default function LoginForm() {
@@ -16,17 +16,17 @@ export default function LoginForm() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
 
-  const supabase = createClient();
-
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     setLoading(true);
     setMessage("");
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const { error } = await authClient.signIn.email({
       email,
       password,
+      // Sem "lembrar-me", a sessão acaba quando o navegador fecha.
+      rememberMe: remember
     });
 
     if (error) {

@@ -1,22 +1,12 @@
-import { redirect } from "next/navigation";
 import Link from "next/link";
 import AccountForm from "@/components/AccountForm";
 import PasswordForm from "@/components/PasswordForm";
 import SteamImportForm from "@/components/SteamImportForm";
-import { getCurrentProfile } from "@/lib/supabase/require-admin";
+import { requireUser } from "@/lib/session";
+import { publicUrl } from "@/lib/storage";
 
 export default async function MinhaConta() {
-  const { supabase, user } = await getCurrentProfile();
-
-  if (!user) {
-    redirect("/");
-  }
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("nickname, avatar_url, steam_id")
-    .eq("id", user.id)
-    .single();
+  const user = await requireUser();
 
   return (
     <main className="admin-page">
@@ -41,10 +31,9 @@ export default async function MinhaConta() {
           </p>
 
           <AccountForm
-            userId={user.id}
-            email={user.email ?? ""}
-            initialNickname={profile?.nickname ?? ""}
-            initialAvatarUrl={profile?.avatar_url ?? null}
+            email={user.email}
+            initialNickname={user.nickname ?? ""}
+            initialAvatarUrl={publicUrl(user.image)}
           />
         </div>
 
@@ -64,7 +53,7 @@ export default async function MinhaConta() {
             automaticamente pro GameSys.
           </p>
 
-          <SteamImportForm initialSteamId={profile?.steam_id ?? ""} />
+          <SteamImportForm initialSteamId={user.steamId ?? ""} />
         </div>
       </section>
     </main>
