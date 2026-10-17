@@ -185,4 +185,4 @@ gamesys/
 
 - O dashboard carrega o catálogo inteiro de uma vez e agrupa em memória. Funciona bem até alguns milhares de jogos; acima disso, o próximo passo é paginação e agrupamento no banco.
 - A Steam não expõe a data de aquisição de cada jogo. A data usada é a de cadastro no GameSys.
-- A Store API da Steam limita requisições por IP. Bibliotecas grandes podem levar alguns logins até todos os jogos terem o selo de "Family Sharing" checado.
+- A Store API da Steam limita requisições por IP. Bibliotecas grandes podem levar alguns segundos até todos os jogos terem o selo de "Family Sharing" checado.
