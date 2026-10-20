@@ -3,20 +3,21 @@
  * é a única forma de entrar num banco recém-criado.
  *
  *   npm run create-admin -- admin@exemplo.com "Nome" [senha]
+ *   npm run create-admin -- admin@exemplo.com "Nome" [senha] --prod
  *
  * Sem senha, envia o e-mail de convite (ou imprime o link no terminal, se
  * SMTP não estiver configurado).
  */
-import { loadEnvConfig } from "@next/env";
+import { loadScriptEnv, scriptArgs } from "./env";
 
-loadEnvConfig(process.cwd());
+loadScriptEnv();
 
 async function main() {
-  const [rawEmail, name = "", password] = process.argv.slice(2);
+  const [rawEmail, name = "", password] = scriptArgs();
   const email = rawEmail?.trim().toLowerCase();
 
   if (!email || !email.includes("@")) {
-    console.error('Uso: npm run create-admin -- <email> ["Nome"] [senha]');
+    console.error('Uso: npm run create-admin -- <email> ["Nome"] [senha] [--prod]');
     process.exit(1);
   }
 

@@ -2,7 +2,8 @@ import { loadEnvConfig } from "@next/env";
 import { defineConfig } from "drizzle-kit";
 import { resolveDialect, type Dialect } from "./lib/db";
 
-loadEnvConfig(process.cwd());
+// Modo desenvolvimento: nunca pega o .env.production.local por acidente.
+loadEnvConfig(process.cwd(), true);
 
 // Um diretório de migrações por dialeto: drizzle/pg, drizzle/mysql,
 // drizzle/sqlite. `npm run db:generate` gera os três a partir dos schemas

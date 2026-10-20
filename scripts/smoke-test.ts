@@ -7,9 +7,10 @@
  * isNull, update/delete) e o fluxo completo de convite → definir senha → login.
  */
 import assert from "node:assert/strict";
-import { loadEnvConfig } from "@next/env";
+import { loadScriptEnv } from "./env";
 
-loadEnvConfig(process.cwd());
+// Nunca contra produção: com --reset este teste apaga todos os dados.
+loadScriptEnv({ allowProd: false });
 
 async function main() {
   const { and, eq, inArray, isNotNull, isNull } = await import("drizzle-orm");

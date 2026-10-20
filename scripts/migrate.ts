@@ -1,10 +1,11 @@
 /**
  * Aplica as migrações pendentes do dialeto configurado em DATABASE_URL.
- *   npm run db:migrate
+ *   npm run db:migrate              (desenvolvimento: .env.local)
+ *   npm run db:migrate -- --prod    (produção: .env.production.local)
  */
-import { loadEnvConfig } from "@next/env";
+import { loadScriptEnv } from "./env";
 
-loadEnvConfig(process.cwd());
+loadScriptEnv();
 
 async function main() {
   const { rawConnection } = await import("../lib/db");

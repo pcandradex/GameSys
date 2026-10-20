@@ -52,8 +52,11 @@ Todas estão documentadas em [.env.example](.env.example). As essenciais:
 Os schemas ficam em `lib/db/schema/` (um arquivo por dialeto, com as mesmas tabelas) e as migrações geradas em `drizzle/<dialeto>/`.
 
 ```bash
-npm run db:migrate     # aplica as migrações pendentes no banco de DATABASE_URL
+npm run db:migrate             # desenvolvimento: usa o .env.local
+npm run db:migrate -- --prod   # produção: usa o .env.production.local
 ```
+
+Os scripts (`db:migrate`, `create-admin`, `test:db`) usam o ambiente de desenvolvimento, a não ser que recebam `--prod`, e mostram no início qual banco vão usar. O `test:db` nunca roda com `--prod`.
 
 **Para mudar o schema:** edite **os três** arquivos em `lib/db/schema/` (`pg.ts`, `mysql.ts`, `sqlite.ts`) da mesma forma e rode:
 
@@ -72,6 +75,7 @@ Não há cadastro público. O primeiro admin é criado pela linha de comando:
 ```bash
 npm run create-admin -- admin@exemplo.com "Nome" "senha"     # define a senha direto
 npm run create-admin -- admin@exemplo.com "Nome"             # envia link para definir a senha
+# acrescente --prod para criar no banco de produção (.env.production.local)
 ```
 
 Se o e-mail já existir, a conta é promovida a admin. Depois disso, novos usuários são convidados pela tela `/admin`.

@@ -66,19 +66,18 @@ Gere um `BETTER_AUTH_SECRET` **novo** para produção, diferente do usado localm
 
 1. Importe o seu repositório na Vercel.
 2. Em Settings → Environment Variables, cadastre as variáveis do passo 3, mais `APP_URL=https://seu-dominio`.
-3. Rode as migrações apontando para o banco de produção. Faça isso no seu computador, com a `DATABASE_URL` de produção:
+3. Rode as migrações no banco de produção, a partir do seu computador. Crie um arquivo `.env.production.local` (o git já o ignora) com `DATABASE_URL`, `BETTER_AUTH_SECRET` e `APP_URL` de produção, e rode com `--prod`:
    ```bash
-   # macOS / Linux / Git Bash
-   DATABASE_URL="postgres://..." npm run db:migrate
-   DATABASE_URL="postgres://..." npm run create-admin -- seu@email.com "Seu Nome"
+   npm run db:migrate -- --prod
+   npm run create-admin -- seu@email.com "Seu Nome" "uma-senha-forte" --prod
    ```
-   ```powershell
-   # PowerShell
-   $env:DATABASE_URL="postgres://..."; npm run db:migrate
-   npm run create-admin -- seu@email.com "Seu Nome"
-   ```
-   O `create-admin` também precisa de `APP_URL`, `BETTER_AUTH_SECRET` e `SMTP_*` de produção para o link do e-mail sair certo. Defina essas variáveis do mesmo jeito.
-   Sem a senha no comando, você recebe por e-mail um link para defini-la. Por isso o SMTP precisa já estar configurado.
+   Sem `--prod`, os scripts usam o `.env.local` (desenvolvimento). Cada script mostra no início qual banco vai usar. O `test:db` se recusa a rodar com `--prod`, porque apaga dados.
+   Sem a senha no comando, o `create-admin` envia por e-mail um link para defini-la, então o SMTP precisa já estar configurado.
+
+   **Se o banco for Supabase:**
+   - Use a URL do **Session pooler** para as migrações e a do **Transaction pooler** (porta 6543) na Vercel. As duas devem terminar em `?uselibpqcompat=true&sslmode=require`. Sem isso, a conexão falha com "self-signed certificate".
+   - Em Project Settings → **Data API**, desligue a API. A migração `0002_supabase_lockdown` já bloqueia o acesso pela chave pública, mas o app não usa essa API.
+   - Imagens podem ficar no próprio Supabase: crie um bucket público e use as credenciais de Storage → Settings → **S3 Connection** (`S3_ENDPOINT=https://<ref>.supabase.co/storage/v1/s3`, `S3_FORCE_PATH_STYLE=true`, `STORAGE_PUBLIC_URL=https://<ref>.supabase.co/storage/v1/object/public/<bucket>`).
 4. Faça o deploy.
 
 Na Vercel, o storage precisa ser S3/R2: o disco de lá não é persistente e as imagens sumiriam.
