@@ -27,6 +27,7 @@ export const users = sqliteTable("users", {
   nickname: text("nickname"),
   steamId: text("steam_id"),
   invitedBy: text("invited_by"),
+  mustChangePassword: bool("must_change_password").notNull().default(false),
   createdAt: createdAt(),
   updatedAt: updatedAt()
 });

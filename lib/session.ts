@@ -13,6 +13,8 @@ export interface CurrentUser {
   image: string | null;
   steamId: string | null;
   isAdmin: boolean;
+  /** Entrou com senha temporária do admin e ainda não definiu a própria. */
+  mustChangePassword: boolean;
 }
 
 /**
@@ -39,7 +41,8 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
       nickname: schema.users.nickname,
       image: schema.users.image,
       steamId: schema.users.steamId,
-      role: schema.users.role
+      role: schema.users.role,
+      mustChangePassword: schema.users.mustChangePassword
     })
     .from(schema.users)
     .where(eq(schema.users.id, session.user.id))
@@ -53,12 +56,28 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   return { ...user, isAdmin: role === "admin" };
 });
 
-/** Para páginas: redireciona ao login se não houver sessão. */
+/**
+ * Para Server Actions: o usuário logado que pode usar o app. Quem está com
+ * senha temporária pendente não pode fazer nada além de trocá-la.
+ */
+export async function getActiveUser(): Promise<CurrentUser | null> {
+  const user = await getCurrentUser();
+  return user && !user.mustChangePassword ? user : null;
+}
+
+/**
+ * Para páginas: redireciona ao login se não houver sessão, e para a troca
+ * obrigatória se o usuário entrou com senha temporária.
+ */
 export async function requireUser(): Promise<CurrentUser> {
   const user = await getCurrentUser();
 
   if (!user) {
     redirect("/");
+  }
+
+  if (user.mustChangePassword) {
+    redirect("/trocar-senha");
   }
 
   return user;

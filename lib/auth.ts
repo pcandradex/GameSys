@@ -75,10 +75,12 @@ function createAuth() {
         });
       },
       async onPasswordReset({ user }) {
-        // Quem definiu a senha pelo link provou que controla o e-mail.
+        // Senha escolhida pelo próprio usuário: libera uma eventual senha
+        // temporária pendente. (O link pode ter sido entregue pelo admin por
+        // outro canal, então emailVerified é só informativo.)
         await db
           .update(schema.users)
-          .set({ emailVerified: true, updatedAt: new Date() })
+          .set({ emailVerified: true, mustChangePassword: false, updatedAt: new Date() })
           .where(eq(schema.users.id, user.id));
       }
     },

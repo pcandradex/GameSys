@@ -33,6 +33,7 @@ export const users = mysqlTable("users", {
   nickname: varchar("nickname", { length: 100 }),
   steamId: varchar("steam_id", { length: 32 }),
   invitedBy: id("invited_by"),
+  mustChangePassword: boolean("must_change_password").notNull().default(false),
   createdAt: createdAt(),
   updatedAt: updatedAt()
 });

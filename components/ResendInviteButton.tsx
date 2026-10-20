@@ -12,7 +12,7 @@ export default function ResendInviteButton({ email }: { email: string }) {
     <form action={formAction}>
       <input type="hidden" name="email" value={email} />
 
-      <button type="submit" className="admin-row-delete" disabled={pending}>
+      <button type="submit" className="admin-row-action" disabled={pending}>
         {pending ? "Enviando..." : state.success ?? "Reenviar convite"}
       </button>
 

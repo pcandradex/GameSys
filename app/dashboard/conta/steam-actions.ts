@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { and, eq, inArray, isNotNull, isNull } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
-import { getCurrentUser } from "@/lib/session";
+import { getActiveUser } from "@/lib/session";
 import {
   SteamImportError,
   fetchIsFamilySharing,
@@ -133,7 +133,7 @@ export async function importSteamGames(
   _prevState: SteamImportState,
   formData: FormData
 ): Promise<SteamImportState> {
-  const user = await getCurrentUser();
+  const user = await getActiveUser();
 
   if (!user) {
     return { error: "Sessão expirada. Faça login novamente." };
@@ -196,7 +196,7 @@ export async function removeSteamImportedGames(
   _prevState: SteamRemoveState,
   _formData: FormData
 ): Promise<SteamRemoveState> {
-  const user = await getCurrentUser();
+  const user = await getActiveUser();
 
   if (!user) {
     return { error: "Sessão expirada. Faça login novamente." };
@@ -235,7 +235,7 @@ export async function removeSteamImportedGames(
  * silêncio — um problema na API da Steam não pode impedir o login.
  */
 export async function syncSteamLibraryForCurrentUser(): Promise<void> {
-  const user = await getCurrentUser();
+  const user = await getActiveUser();
   const apiKey = process.env.STEAM_API_KEY;
 
   if (!user?.steamId || !apiKey) {

@@ -698,6 +698,9 @@ input:focus-visible {
 }
 
 .admin-card {
+  /* Item de grid: sem min-width 0 o card cresce até caber a tabela e a
+     página inteira passa a rolar na horizontal no celular. */
+  min-width: 0;
   padding: 26px 28px;
   border-radius: 18px;
   background: var(--card-bg);
@@ -809,9 +812,129 @@ input:focus-visible {
   font-size: 11px;
 }
 
+.admin-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.admin-row-action {
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 7px;
+  border: 1px solid rgba(26, 159, 255, 0.35);
+  background: transparent;
+  color: var(--blue-light);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s ease;
+}
+
+.admin-row-action:hover:not(:disabled) {
+  background: rgba(26, 159, 255, 0.1);
+}
+
+.admin-row-action:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* Link / senha temporária mostrados uma única vez para o admin copiar */
+.access-secret {
+  margin: 8px 0 14px;
+  min-width: 0;
+}
+
+.access-secret-label {
+  color: var(--text-secondary);
+  font-size: 12px;
+  margin-bottom: 6px;
+}
+
+.access-secret-row {
+  display: flex;
+  gap: 6px;
+}
+
+.access-secret-row input {
+  flex: 1;
+  min-width: 0;
+  height: 34px;
+  padding: 0 10px;
+  border-radius: 7px;
+  border: 1px solid var(--input-border);
+  background: var(--input-bg);
+  color: var(--text-primary);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12.5px;
+}
+
+.access-secret-hint {
+  margin-top: 6px;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.admin-row-panel {
+  flex-basis: 100%;
+  max-width: 420px;
+}
+
+.delivery-options {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 16px;
+  border: 0;
+  padding: 0;
+}
+
+.delivery-options legend {
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.delivery-option {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--input-border);
+  background: var(--input-bg);
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.delivery-option:has(input:checked) {
+  border-color: var(--input-focus);
+}
+
+.delivery-option input {
+  margin-top: 3px;
+  accent-color: var(--blue);
+}
+
+.delivery-option small {
+  display: block;
+  color: var(--text-muted);
+  font-size: 11.5px;
+  margin-top: 2px;
+}
+
 @media (max-width: 780px) {
   .admin-content {
     grid-template-columns: 1fr;
+    padding: 0 16px 40px;
+  }
+
+  .admin-card {
+    padding: 22px 18px;
   }
 
   .admin-header {

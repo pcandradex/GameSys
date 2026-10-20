@@ -66,7 +66,7 @@ async function main() {
 
   const signIn = await auth().api.signInEmail({ body: { email: "amigo@test.dev", password: "senha-segura-1" }, asResponse: true });
   assert.equal(signIn.status, 200, "login deveria funcionar");
-  const cookie = signIn.headers.get("set-cookie")!;
+  let cookie = signIn.headers.get("set-cookie")!;
   const session = await auth().api.getSession({ headers: new Headers({ cookie: cookie.split(";")[0] }) });
   assert.equal(session?.user.id, inviteeId);
   assert.equal((session!.user as { role?: string }).role, "user");
@@ -79,6 +79,51 @@ async function main() {
   const signUp = await auth().api.signUpEmail({ body: { email: "x@test.dev", password: "12345678", name: "x" }, asResponse: true }).catch((e) => e);
   assert.ok(signUp.status !== 200, "cadastro público deveria estar bloqueado");
   console.log("✓ cadastro público bloqueado");
+
+  // ── acesso sem e-mail (lib/access.ts, usado pelo admin) ──
+  const { createPasswordSetupLink, generateTemporaryPassword, setTemporaryPassword } =
+    await import("../lib/access");
+
+  const linkUserId = crypto.randomUUID();
+  await db.insert(users).values({ id: linkUserId, name: "", email: "link@test.dev" });
+  const setupLink = await createPasswordSetupLink(linkUserId);
+  const linkToken = setupLink.match(/reset-password\/([A-Za-z0-9]+)\?/)![1];
+  await auth().api.resetPassword({ body: { token: linkToken, newPassword: "senha-do-link-1" } });
+  const viaLink = await auth().api.signInEmail({ body: { email: "link@test.dev", password: "senha-do-link-1" }, asResponse: true });
+  assert.equal(viaLink.status, 200, "login após link gerado pelo admin");
+  const reused = await auth().api.resetPassword({ body: { token: linkToken, newPassword: "outra-senha-1" } }).catch((e) => e);
+  assert.ok(reused instanceof Error, "link gerado não pode ser reutilizado");
+  console.log("✓ link de definição gerado pelo admin (uso único)");
+
+  const tempPassword = generateTemporaryPassword();
+  assert.match(tempPassword, /^[A-HJ-NP-Za-km-np-z2-9]{12}$/);
+  await setTemporaryPassword(inviteeId, tempPassword);
+  const [flagged] = await db.select({ must: users.mustChangePassword }).from(users).where(eq(users.id, inviteeId));
+  assert.equal(flagged.must, true);
+  const oldSessions = await db.select({ id: sessions.id }).from(sessions).where(eq(sessions.userId, inviteeId));
+  assert.equal(oldSessions.length, 0, "senha temporária encerra as sessões");
+  const oldPassword = await auth().api.signInEmail({ body: { email: "amigo@test.dev", password: "senha-segura-1" }, asResponse: true });
+  assert.equal(oldPassword.status, 401, "senha anterior deixa de valer");
+  const withTemp = await auth().api.signInEmail({ body: { email: "amigo@test.dev", password: tempPassword }, asResponse: true });
+  assert.equal(withTemp.status, 200, "login com senha temporária");
+  console.log("✓ senha temporária: invalida a anterior, encerra sessões e marca troca obrigatória");
+
+  await setTemporaryPassword(linkUserId, generateTemporaryPassword());
+  const recovery = await createPasswordSetupLink(linkUserId);
+  await auth().api.resetPassword({
+    body: { token: recovery.match(/reset-password\/([A-Za-z0-9]+)\?/)![1], newPassword: "senha-nova-link" }
+  });
+  const [cleared] = await db.select({ must: users.mustChangePassword }).from(users).where(eq(users.id, linkUserId));
+  assert.equal(cleared.must, false, "redefinir pelo link libera a troca obrigatória");
+  console.log("✓ redefinição pelo link libera a senha temporária");
+
+  await db.delete(sessions).where(eq(sessions.userId, linkUserId));
+  await db.delete(accounts).where(eq(accounts.userId, linkUserId));
+  await db.delete(users).where(eq(users.id, linkUserId));
+
+  // a sessão usada no fim do teste precisa ser nova (a temporária derrubou a anterior)
+  const relogin = await auth().api.signInEmail({ body: { email: "amigo@test.dev", password: tempPassword }, asResponse: true });
+  cookie = relogin.headers.get("set-cookie")!;
 
   // ── jogos ──
   await db.insert(games).values([

@@ -29,6 +29,9 @@ export const users = pgTable("users", {
   nickname: text("nickname"),
   steamId: text("steam_id"),
   invitedBy: text("invited_by"),
+  // Senha temporária definida pelo admin: o usuário precisa trocá-la no
+  // próximo acesso antes de usar o app (ver lib/session.ts).
+  mustChangePassword: boolean("must_change_password").notNull().default(false),
   createdAt: createdAt(),
   updatedAt: updatedAt()
 });

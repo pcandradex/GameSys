@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
-import { getCurrentUser } from "@/lib/session";
+import { getActiveUser } from "@/lib/session";
 import { canManageGame, getGame } from "@/lib/data/games";
 import { removeImage, uploadImage } from "@/lib/storage";
 
@@ -21,7 +21,7 @@ function readGameFields(formData: FormData) {
 }
 
 export async function createGame(formData: FormData): Promise<ActionResult> {
-  const user = await getCurrentUser();
+  const user = await getActiveUser();
 
   if (!user) {
     return { error: SESSION_EXPIRED };
@@ -67,7 +67,7 @@ export async function updateGame(
   gameId: string,
   formData: FormData
 ): Promise<ActionResult> {
-  const user = await getCurrentUser();
+  const user = await getActiveUser();
 
   if (!user) {
     return { error: SESSION_EXPIRED };
@@ -117,7 +117,7 @@ export async function updateGame(
 }
 
 export async function deleteGame(gameId: string): Promise<ActionResult> {
-  const user = await getCurrentUser();
+  const user = await getActiveUser();
 
   if (!user) {
     return { error: SESSION_EXPIRED };
@@ -143,7 +143,7 @@ export async function deleteGame(gameId: string): Promise<ActionResult> {
 }
 
 export async function updateProfile(formData: FormData): Promise<ActionResult> {
-  const user = await getCurrentUser();
+  const user = await getActiveUser();
 
   if (!user) {
     return { error: SESSION_EXPIRED };

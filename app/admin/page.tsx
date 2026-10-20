@@ -3,6 +3,7 @@ import Link from "next/link";
 import InviteForm from "@/components/InviteForm";
 import DeleteUserButton from "@/components/DeleteUserButton";
 import ResendInviteButton from "@/components/ResendInviteButton";
+import UserAccessActions from "@/components/UserAccessActions";
 import { and, desc, eq } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { requireUser } from "@/lib/session";
@@ -26,6 +27,7 @@ export default async function AdminPage() {
       name: users.name,
       role: users.role,
       createdAt: users.createdAt,
+      mustChangePassword: users.mustChangePassword,
       credentialId: accounts.id
     })
     .from(users)
@@ -53,8 +55,9 @@ export default async function AdminPage() {
         <div className="admin-card">
           <h2>Convidar novo usuário</h2>
           <p className="admin-subtitle">
-            O convidado recebe um e-mail para definir a própria senha.
             Não há cadastro público — só administradores criam contas.
+            Se o e-mail estiver indisponível, gere um link ou uma senha
+            temporária para enviar por outro canal.
           </p>
 
           <InviteForm />
@@ -90,22 +93,35 @@ export default async function AdminPage() {
                         {profile.role === "admin" ? "Admin" : "Usuário"}
                       </span>
                     </td>
-                    <td>{profile.credentialId ? "Ativo" : "Convite pendente"}</td>
+                    <td>
+                      {!profile.credentialId
+                        ? "Convite pendente"
+                        : profile.mustChangePassword
+                          ? "Senha temporária"
+                          : "Ativo"}
+                    </td>
                     <td>
                       {profile.createdAt.toLocaleDateString(
                         "pt-BR"
                       )}
                     </td>
                     <td>
-                      {!profile.credentialId && (
-                        <ResendInviteButton email={profile.email} />
-                      )}
-
                       {profile.id !== user.id && (
-                        <DeleteUserButton
-                          userId={profile.id}
-                          label={resolveDisplayName(profile)}
-                        />
+                        <div className="admin-row-actions">
+                          {!profile.credentialId && (
+                            <ResendInviteButton email={profile.email} />
+                          )}
+
+                          <UserAccessActions
+                            userId={profile.id}
+                            label={resolveDisplayName(profile)}
+                          >
+                            <DeleteUserButton
+                              userId={profile.id}
+                              label={resolveDisplayName(profile)}
+                            />
+                          </UserAccessActions>
+                        </div>
                       )}
                     </td>
                   </tr>

@@ -30,7 +30,12 @@ export default function LoginForm() {
     });
 
     if (error) {
-      setMessage("E-mail ou senha inválidos.");
+      // 429: limite de tentativas do Better Auth (3 a cada 10 s por IP).
+      setMessage(
+        error.status === 429
+          ? "Muitas tentativas seguidas. Aguarde alguns segundos e tente de novo."
+          : "E-mail ou senha inválidos."
+      );
       setLoading(false);
       return;
     }
