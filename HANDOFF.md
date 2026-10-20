@@ -52,9 +52,9 @@ Sem SMTP configurado, os e-mails de convite e de recuperação de senha **não s
 
 | Para quê | Sugestões (todas têm plano gratuito) | Variáveis no `.env` |
 |---|---|---|
-| Banco de dados | [Neon](https://neon.tech) (Postgres), [Turso](https://turso.tech) (SQLite), ou qualquer Postgres/MySQL | `DATABASE_URL` (+ `DATABASE_AUTH_TOKEN` no Turso) |
-| Imagens | [Cloudflare R2](https://developers.cloudflare.com/r2/) ou AWS S3 | `STORAGE_DRIVER=s3`, `S3_*`, `STORAGE_PUBLIC_URL` |
-| E-mail | [Resend](https://resend.com), SendGrid, Brevo… | `SMTP_*`, `EMAIL_FROM` |
+| Banco de dados | [Supabase](https://supabase.com) ou [Neon](https://neon.tech) (Postgres), [Turso](https://turso.tech) (SQLite), ou qualquer Postgres/MySQL | `DATABASE_URL` (+ `DATABASE_AUTH_TOKEN` no Turso) |
+| Imagens | O storage do próprio Supabase, [Cloudflare R2](https://developers.cloudflare.com/r2/) ou AWS S3 | `STORAGE_DRIVER=s3`, `S3_*`, `STORAGE_PUBLIC_URL` |
+| E-mail (opcional) | [Resend](https://resend.com), SendGrid, Brevo… Sem SMTP, o admin entrega acesso por link ou senha temporária | `SMTP_*`, `EMAIL_FROM` |
 | Steam (opcional) | [Steam Web API key](https://steamcommunity.com/dev/apikey), vinculada à sua conta Steam | `STEAM_API_KEY` |
 | Hospedagem | [Vercel](https://vercel.com), ou um VPS/Docker seu | — |
 
@@ -64,23 +64,23 @@ Gere um `BETTER_AUTH_SECRET` **novo** para produção, diferente do usado localm
 
 **Na Vercel:**
 
-1. Importe o seu repositório na Vercel.
-2. Em Settings → Environment Variables, cadastre as variáveis do passo 3, mais `APP_URL=https://seu-dominio`.
-3. Rode as migrações no banco de produção, a partir do seu computador. Crie um arquivo `.env.production.local` (o git já o ignora) com `DATABASE_URL`, `BETTER_AUTH_SECRET` e `APP_URL` de produção, e rode com `--prod`:
+1. **Prepare o banco, da sua máquina.** Crie um arquivo `.env.production.local` (o git já o ignora) com `DATABASE_URL`, `BETTER_AUTH_SECRET` e `APP_URL` de produção. Depois rode com `--prod`:
    ```bash
    npm run db:migrate -- --prod
    npm run create-admin -- seu@email.com "Seu Nome" "uma-senha-forte" --prod
    ```
    Sem `--prod`, os scripts usam o `.env.local` (desenvolvimento). Cada script mostra no início qual banco vai usar. O `test:db` se recusa a rodar com `--prod`, porque apaga dados.
-   Sem a senha no comando, o `create-admin` envia por e-mail um link para defini-la, então o SMTP precisa já estar configurado.
+   Guarde uma cópia segura do `.env.production.local`: ele é necessário para as migrações das próximas versões.
 
-   **Se o banco for Supabase:**
-   - Use a URL do **Session pooler** para as migrações e a do **Transaction pooler** (porta 6543) na Vercel. As duas devem terminar em `?uselibpqcompat=true&sslmode=require`. Sem isso, a conexão falha com "self-signed certificate".
-   - Em Project Settings → **Data API**, desligue a API. A migração `0002_supabase_lockdown` já bloqueia o acesso pela chave pública, mas o app não usa essa API.
-   - Imagens podem ficar no próprio Supabase: crie um bucket público e use as credenciais de Storage → Settings → **S3 Connection** (`S3_ENDPOINT=https://<ref>.supabase.co/storage/v1/s3`, `S3_FORCE_PATH_STYLE=true`, `STORAGE_PUBLIC_URL=https://<ref>.supabase.co/storage/v1/object/public/<bucket>`).
-4. Faça o deploy.
+   **Usando o Supabase?** Siga também a seção "Usando o Supabase" do README. Ela cobre a URL certa para cada uso (Session × Transaction pooler), o parâmetro de SSL, desligar a Data API e o storage de imagens.
+2. **Vincule o projeto:** `npx vercel link`, ou importe o repositório no painel da Vercel.
+3. **Cadastre as variáveis** do passo 3 em Settings → Environment Variables, mais `APP_URL=https://seu-dominio` e `DB_POOL_SIZE=1`. Na Vercel, a `DATABASE_URL` deve ser a do pooler (no Supabase, o Transaction pooler, porta 6543).
+4. **Região:** o `vercel.json` fixa as funções em São Paulo (`gru1`). Se o seu banco estiver em outra região, troque para a mais próxima dele.
+5. **Publique:** `npx vercel --prod`.
 
-Na Vercel, o storage precisa ser S3/R2: o disco de lá não é persistente e as imagens sumiriam.
+Na Vercel, o storage precisa ser S3/R2/Supabase Storage: o disco de lá não é persistente e as imagens sumiriam.
+
+Se algo falhar, a tabela "Problemas comuns" do README lista os erros que já apareceram e a solução de cada um.
 
 **Num VPS ou Docker:** veja a seção "Deploy" do README. O storage local funciona, desde que `uploads/` (e `data/`, se usar SQLite) fiquem num volume persistente.
 
@@ -90,6 +90,13 @@ Na Vercel, o storage precisa ser S3/R2: o disco de lá não é persistente e as 
 - **Alguém esqueceu a senha e o e-mail não chega:** em `/admin`, use “Gerar link” ou “Senha temporária” na linha do usuário.
 - **Mudar o banco (schema):** edite os três arquivos em `lib/db/schema/` e rode `npm run db:generate -- --name descricao`. Depois, `npm run db:migrate` em cada ambiente.
 - **Antes de publicar uma mudança:** rode `npm run typecheck`, `npm run lint` e `npm run build`.
+- **Publicar uma nova versão:**
+  ```bash
+  npm run db:migrate -- --prod   # só se houver migração nova em drizzle/
+  git push
+  npx vercel --prod
+  ```
+  O "Instant Rollback" da Vercel só é seguro entre versões sem migração nem mudança de variáveis, porque reaproveita o banco e as variáveis atuais.
 - **Testar contra um banco descartável:** `npm run test:db -- --reset`. Ele **apaga todos os dados**, então nunca aponte para produção.
 
 ## Checklist
@@ -97,8 +104,11 @@ Na Vercel, o storage precisa ser S3/R2: o disco de lá não é persistente e as 
 - [ ] Repositório próprio criado e código enviado
 - [ ] Rodou localmente e fez login
 - [ ] Banco de produção criado e `db:migrate` aplicado
-- [ ] Storage S3/R2 configurado (se for usar a Vercel)
-- [ ] SMTP configurado e convite de teste recebido
+- [ ] Storage S3/R2/Supabase configurado (se for usar a Vercel) e upload de capa testado
+- [ ] Se usar Supabase: Data API desligada
+- [ ] SMTP configurado e convite de teste recebido (opcional)
 - [ ] `BETTER_AUTH_SECRET` próprio de produção
 - [ ] Admin de produção criado
+- [ ] Região do `vercel.json` próxima ao banco
 - [ ] Deploy feito e `APP_URL` apontando para o domínio final
+- [ ] Cópia segura do `.env.production.local`

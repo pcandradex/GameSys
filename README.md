@@ -102,10 +102,58 @@ Uploads aceitam JPG, PNG, GIF, WEBP e AVIF de até 4 MB.
 
 ### Vercel (ou outra plataforma serverless)
 
-1. Use um banco acessível pela internet (Neon, Supabase, PlanetScale, Turso…) e `STORAGE_DRIVER=s3`.
-2. Configure as variáveis de ambiente do projeto.
-3. Rode as migrações antes de cada deploy. Uma forma é usar o build command `npm run db:migrate && npm run build`.
-4. Em serverless, use a URL com pooler do provedor (PgBouncer, Neon pooled etc.) e um `DB_POOL_SIZE` baixo (1–3).
+1. Use um banco acessível pela internet (Neon, Supabase, PlanetScale, Turso…) e `STORAGE_DRIVER=s3`. O disco da Vercel não é persistente.
+2. Configure as variáveis de ambiente do projeto (Settings → Environment Variables, ou `vercel env add NOME production`).
+3. Rode as migrações **antes** do deploy, da sua máquina: `npm run db:migrate -- --prod` (veja [Banco de dados](#banco-de-dados)).
+4. Em serverless, use a URL com pooler do provedor (PgBouncer, Neon pooled, Supabase Transaction pooler…) e `DB_POOL_SIZE=1`.
+5. Publique com `vercel --prod`, ou conecte o repositório na Vercel para publicar a cada push.
+
+**Região:** o [vercel.json](vercel.json) fixa as funções em São Paulo (`gru1`), porque o banco de referência está no Supabase `sa-east-1`. Se o seu banco estiver em outra região, troque para a região da Vercel mais próxima dele (ex.: `iad1` para `us-east-1`). Cada consulta atravessa essa distância, então isso pesa bastante no tempo de resposta.
+
+**Publicar uma nova versão:**
+
+```bash
+npm run db:migrate -- --prod   # só se a versão trouxer migração nova (pasta drizzle/)
+git push
+vercel --prod
+```
+
+**Rollback:** o "Instant Rollback" da Vercel volta o código, mas usa as variáveis de ambiente **atuais** e o banco **atual**. Ele só é seguro entre versões sem migração nem mudança de variáveis. Nos outros casos, publique uma correção.
+
+### Usando o Supabase (banco + imagens)
+
+O Supabase serve como Postgres e como storage S3. O login **não** usa o Supabase Auth: fica no próprio app.
+
+1. **Projeto:** use um projeto dedicado ao GameSys. Um projeto que já tenha uma tabela `games` faz a migração falhar com "relation already exists".
+2. **Data API:** desligue em Project Settings → Data API. O app não usa a API REST. Além disso, a migração `0002_supabase_lockdown` liga RLS e remove o acesso da chave pública às tabelas.
+3. **Conexão** (botão **Connect**):
+   - **Session pooler** (porta 5432): para `db:migrate` e `create-admin`, no `.env.production.local`.
+   - **Transaction pooler** (porta 6543): para o app, na `DATABASE_URL` da Vercel.
+   - As duas terminam em `?uselibpqcompat=true&sslmode=require`. A conexão continua criptografada; sem esse final, o driver recusa o certificado do Supabase ("self-signed certificate in certificate chain").
+   - Substitua `[YOUR-PASSWORD]` **inclusive os colchetes**. Se a senha tiver caracteres especiais (`@ : / ? # %`), codifique-os na URL (ex.: `@` → `%40`).
+4. **Imagens:** crie um bucket **público** e gere chaves em Storage → Settings → S3 Connection:
+   ```bash
+   STORAGE_DRIVER=s3
+   S3_BUCKET=gamesys
+   S3_REGION=sa-east-1                                   # a Region mostrada na tela
+   S3_ENDPOINT=https://<ref>.supabase.co/storage/v1/s3
+   S3_FORCE_PATH_STYLE=true
+   S3_ACCESS_KEY_ID=...
+   S3_SECRET_ACCESS_KEY=...
+   STORAGE_PUBLIC_URL=https://<ref>.supabase.co/storage/v1/object/public/gamesys
+   ```
+
+### Problemas comuns
+
+| Sintoma | Causa | Solução |
+|---|---|---|
+| Login falha com "Invalid origin" | `APP_URL` diferente do endereço acessado | `APP_URL` igual à URL do navegador (domínio e porta), sem `/` no final |
+| "self-signed certificate in certificate chain" | URL do Postgres sem o parâmetro de SSL | Acrescente `?uselibpqcompat=true&sslmode=require` |
+| "password authentication failed" | Senha errada, colchetes do modelo ou caractere especial sem codificar | Confira a senha; tire os `[ ]`; codifique `@ : / ? # %` |
+| "relation … already exists" na migração | Banco já tem tabelas de outro sistema | Use um banco/projeto vazio |
+| Upload de imagem falha | Storage S3 incompleto (chaves, bucket ou endpoint) | Confira as variáveis `S3_*`. O bucket precisa existir e ser público |
+| "Muitas tentativas seguidas" no login | Limite de 3 tentativas a cada 10 s por IP | Aguarde uns segundos |
+| Login quebra depois de atualizar | Migração nova não aplicada | `npm run db:migrate -- --prod` |
 
 ### Servidor próprio / VPS / Docker
 
