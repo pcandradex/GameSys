@@ -161,7 +161,10 @@ vercel --prod
 O Supabase serve como Postgres e como storage S3. O login **não** usa o Supabase Auth: fica no próprio app.
 
 1. **Projeto:** use um projeto dedicado ao GameSys. Um projeto que já tenha uma tabela `games` faz a migração falhar com "relation already exists".
-2. **Data API:** desligue em Project Settings → Data API. O app não usa a API REST. Além disso, a migração `0002_supabase_lockdown` liga RLS e remove o acesso da chave pública às tabelas.
+2. **Data API:** o app não usa a API REST do Supabase. Depois de rodar as migrações, vá em Project Settings → Data API, deixe a API **ligada** e, em **Exposed schemas**, mantenha **somente** `api`, removendo `public` e `graphql_public`.
+   - O schema `api` é criado vazio pela migração `0004_supabase_api_schema`. Nada fica exposto.
+   - Não desligue a Data API: desligada, o Supabase aponta o serviço para um schema inexistente e registra o erro `"pg_pgrst_no_exposed_schemas" does not exist` a cada ~30 s.
+   - Mesmo que `public` seja exposto por engano, a migração `0002_supabase_lockdown` já ligou RLS e removeu o acesso da chave pública às tabelas.
 3. **Conexão** (botão **Connect**):
    - **Session pooler** (porta 5432): para `db:migrate` e `create-admin`, no `.env.production.local`.
    - **Transaction pooler** (porta 6543): para o app, na `DATABASE_URL` da Vercel.
@@ -190,6 +193,7 @@ O Supabase serve como Postgres e como storage S3. O login **não** usa o Supabas
 | Upload de imagem falha | Storage S3 incompleto (chaves, bucket ou endpoint) | Confira as variáveis `S3_*`. O bucket precisa existir e ser público |
 | "Muitas tentativas seguidas" no login | Limite de 3 tentativas a cada 10 s por IP | Aguarde uns segundos |
 | Login quebra depois de atualizar | Migração nova não aplicada | `npm run db:migrate -- --prod` |
+| Log do Supabase: `"pg_pgrst_no_exposed_schemas" does not exist` a cada ~30 s | Data API desligada | Ligue a Data API expondo só o schema `api` (veja "Usando o Supabase") |
 
 ### Servidor próprio / VPS / Docker
 

@@ -72,7 +72,7 @@ Gere um `BETTER_AUTH_SECRET` **novo** para produção, diferente do usado localm
    Sem `--prod`, os scripts usam o `.env.local` (desenvolvimento). Cada script mostra no início qual banco vai usar. O `test:db` se recusa a rodar com `--prod`, porque apaga dados.
    Guarde uma cópia segura do `.env.production.local`: ele é necessário para as migrações das próximas versões.
 
-   **Usando o Supabase?** Siga também a seção "Usando o Supabase" do README. Ela cobre a URL certa para cada uso (Session × Transaction pooler), o parâmetro de SSL, desligar a Data API e o storage de imagens.
+   **Usando o Supabase?** Siga também a seção "Usando o Supabase" do README. Ela cobre a URL certa para cada uso (Session × Transaction pooler), o parâmetro de SSL, a configuração da Data API (só o schema `api` exposto) e o storage de imagens.
 2. **Vincule o projeto:** `npx vercel link`, ou importe o repositório no painel da Vercel.
 3. **Cadastre as variáveis** do passo 3 em Settings → Environment Variables, mais `APP_URL=https://seu-dominio`, `DB_POOL_SIZE=1` e `CRON_SECRET` (ativa a sincronização diária da Steam, já agendada no `vercel.json`). Na Vercel, a `DATABASE_URL` deve ser a do pooler (no Supabase, o Transaction pooler, porta 6543).
 4. **Região:** o `vercel.json` fixa as funções em São Paulo (`gru1`). Se o seu banco estiver em outra região, troque para a mais próxima dele.
@@ -105,7 +105,7 @@ Se algo falhar, a tabela "Problemas comuns" do README lista os erros que já apa
 - [ ] Rodou localmente e fez login
 - [ ] Banco de produção criado e `db:migrate` aplicado
 - [ ] Storage S3/R2/Supabase configurado (se for usar a Vercel) e upload de capa testado
-- [ ] Se usar Supabase: Data API desligada
+- [ ] Se usar Supabase: Data API expondo somente o schema `api`
 - [ ] SMTP configurado e convite de teste recebido (opcional)
 - [ ] `BETTER_AUTH_SECRET` próprio de produção
 - [ ] Admin de produção criado
