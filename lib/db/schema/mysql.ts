@@ -32,6 +32,8 @@ export const users = mysqlTable("users", {
   role: varchar("role", { length: 20 }).notNull().default("user"),
   nickname: varchar("nickname", { length: 100 }),
   steamId: varchar("steam_id", { length: 32 }),
+  // Última sincronização com a Steam (login, dashboard ou rotina diária).
+  steamSyncedAt: timestamp("steam_synced_at"),
   invitedBy: id("invited_by"),
   mustChangePassword: boolean("must_change_password").notNull().default(false),
   createdAt: createdAt(),

@@ -46,6 +46,7 @@ Todas estão documentadas em [.env.example](.env.example). As essenciais:
 | `STORAGE_PUBLIC_URL` | Opcional: URL do bucket/CDN público. Sem ela, as imagens são servidas pelo app em `/files/*` |
 | `SMTP_*`, `EMAIL_FROM` | Envio de convites e recuperação de senha |
 | `STEAM_API_KEY` | Importação da Steam |
+| `CRON_SECRET` | Habilita a sincronização diária da Steam (`/api/cron/steam-sync`). Sem ele, a rota fica desligada |
 
 ## Banco de dados
 
@@ -97,6 +98,41 @@ O banco guarda só a **chave** do arquivo (`game-covers/<usuário>/<uuid>.png`),
   ```
 
 Uploads aceitam JPG, PNG, GIF, WEBP e AVIF de até 4 MB.
+
+## Sincronização com a Steam
+
+Cada usuário vincula o próprio perfil Steam em **Minha conta**. A biblioteca dele é sincronizada em três momentos:
+
+| Quando | Quem é sincronizado |
+|---|---|
+| Login, ou botão "Importar jogos da Steam" | O próprio usuário, na hora |
+| Ao abrir o dashboard, no máximo a cada 12 h | O próprio usuário, depois que a página carrega (os jogos novos aparecem no acesso seguinte) |
+| **Rotina diária** | **Todos** os usuários com Steam vinculada, mesmo os que não entraram no site |
+
+A sincronização é incremental: só busca jogos novos. O selo "Family Sharing" é checado aos poucos (a Steam limita ~200 consultas a cada 5 min por IP) e reaproveitado entre usuários que têm o mesmo jogo.
+
+### Agendando a rotina diária
+
+A rotina é a rota `GET /api/cron/steam-sync`. Ela só executa com o cabeçalho `Authorization: Bearer <CRON_SECRET>` e responde com um resumo em JSON (usuários sincronizados, jogos novos, falhas). Também existe o script `npm run sync:steam` (com `-- --prod` para produção), para servidores onde dá para rodar comandos.
+
+Defina `CRON_SECRET` (gere como o `BETTER_AUTH_SECRET`) e escolha o agendador conforme a hospedagem:
+
+| Onde o GameSys roda | Como agendar |
+|---|---|
+| **Vercel** | Já configurado no [vercel.json](vercel.json): todo dia às 04:00 (Brasília). Basta cadastrar `CRON_SECRET` nas variáveis do projeto; a Vercel envia o cabeçalho sozinha |
+| **VPS / Cloud Server** (ex.: Locaweb Cloud) | `crontab -e` e uma das linhas abaixo |
+| **Hospedagem com agendador no painel** | Uma tarefa diária com o comando `curl` abaixo |
+| **Sem agendador** | Serviço externo gratuito: [cron-job.org](https://cron-job.org) (permite cabeçalho personalizado) ou GitHub Actions agendado |
+
+```bash
+# chamando a rota (qualquer hospedagem):
+0 4 * * * curl -fsS -H "Authorization: Bearer SEU_CRON_SECRET" https://seu-dominio/api/cron/steam-sync
+
+# ou rodando o script direto no servidor:
+0 4 * * * cd /caminho/do/gamesys && npm run sync:steam -- --prod >> sync.log 2>&1
+```
+
+Cada execução processa os usuários do que está há mais tempo sem sincronizar para o mais recente. Na Vercel, para antes de 45 s; quem ficar de fora é o primeiro da próxima execução.
 
 ## Deploy
 
@@ -178,7 +214,7 @@ npm run lint
 npm run test:db -- --reset    # ATENÇÃO: apaga todos os dados. Use só em banco de teste
 ```
 
-O `test:db` roda contra o banco de `DATABASE_URL` o fluxo de convite → definir senha → login, o bloqueio de cadastro público, a listagem com join, as consultas da sincronização Steam e a exclusão de usuário. Sem `--reset`, ele se recusa a rodar se o banco já tiver usuários.
+O `test:db` roda contra o banco de `DATABASE_URL` o fluxo de convite → definir senha → login, o bloqueio de cadastro público, a listagem com join, a sincronização Steam (com a Steam simulada, sem gastar a sua chave) e a exclusão de usuário. Sem `--reset`, ele se recusa a rodar se o banco já tiver usuários.
 
 ## Estrutura
 
@@ -206,8 +242,9 @@ gamesys/
 │   ├── storage.ts           # Drivers local/S3
 │   ├── email.ts             # SMTP
 │   ├── steam.ts             # Integração com a Web API da Steam
+│   ├── steam-sync.ts        # Sincronização (login, dashboard e rotina diária)
 │   └── group-games.ts       # Agrupamento de jogos duplicados
-├── scripts/                 # migrate, generate, create-admin, smoke-test
+├── scripts/                 # migrate, generate, create-admin, sync-steam, smoke-test
 └── proxy.ts                 # Redireciona rotas privadas sem sessão
 ```
 
@@ -221,7 +258,7 @@ gamesys/
 **Conta do usuário**
 - Nickname e foto de perfil
 - Alteração de senha (exige a senha atual e encerra as outras sessões)
-- Vínculo com a Steam: importa a biblioteca e sincroniza a cada login. A sincronização é incremental: só busca jogos novos, e o "Family Sharing" é checado aos poucos e reaproveitado entre usuários
+- Vínculo com a Steam: importa a biblioteca e mantém atualizada no login, ao abrir o dashboard (a cada 12 h) e numa rotina diária para todos os usuários (veja [Sincronização com a Steam](#sincronização-com-a-steam))
 
 **Catálogo de jogos**
 - Cadastro manual (título, descrição, imagem) ou importado da Steam
@@ -238,4 +275,4 @@ gamesys/
 
 - O dashboard carrega o catálogo inteiro de uma vez e agrupa em memória. Funciona bem até alguns milhares de jogos; acima disso, o próximo passo é paginação e agrupamento no banco.
 - A Steam não expõe a data de aquisição de cada jogo. A data usada é a de cadastro no GameSys.
-- A Store API da Steam limita requisições por IP. Bibliotecas grandes podem levar alguns logins até todos os jogos terem o selo de "Family Sharing" checado.
+- A Store API da Steam limita requisições por IP. Bibliotecas grandes podem levar alguns dias (algumas sincronizações) até todos os jogos terem o selo de "Family Sharing" checado.

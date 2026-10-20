@@ -55,7 +55,7 @@ Sem SMTP configurado, os e-mails de convite e de recuperação de senha **não s
 | Banco de dados | [Supabase](https://supabase.com) ou [Neon](https://neon.tech) (Postgres), [Turso](https://turso.tech) (SQLite), ou qualquer Postgres/MySQL | `DATABASE_URL` (+ `DATABASE_AUTH_TOKEN` no Turso) |
 | Imagens | O storage do próprio Supabase, [Cloudflare R2](https://developers.cloudflare.com/r2/) ou AWS S3 | `STORAGE_DRIVER=s3`, `S3_*`, `STORAGE_PUBLIC_URL` |
 | E-mail (opcional) | [Resend](https://resend.com), SendGrid, Brevo… Sem SMTP, o admin entrega acesso por link ou senha temporária | `SMTP_*`, `EMAIL_FROM` |
-| Steam (opcional) | [Steam Web API key](https://steamcommunity.com/dev/apikey), vinculada à sua conta Steam | `STEAM_API_KEY` |
+| Steam (opcional) | [Steam Web API key](https://steamcommunity.com/dev/apikey), vinculada à sua conta Steam. Gere a sua: a chave de quem entregou o projeto não vem junto | `STEAM_API_KEY`, e `CRON_SECRET` para a sincronização diária |
 | Hospedagem | [Vercel](https://vercel.com), ou um VPS/Docker seu | — |
 
 Gere um `BETTER_AUTH_SECRET` **novo** para produção, diferente do usado localmente. Se ele mudar depois, todo mundo é deslogado.
@@ -74,7 +74,7 @@ Gere um `BETTER_AUTH_SECRET` **novo** para produção, diferente do usado localm
 
    **Usando o Supabase?** Siga também a seção "Usando o Supabase" do README. Ela cobre a URL certa para cada uso (Session × Transaction pooler), o parâmetro de SSL, desligar a Data API e o storage de imagens.
 2. **Vincule o projeto:** `npx vercel link`, ou importe o repositório no painel da Vercel.
-3. **Cadastre as variáveis** do passo 3 em Settings → Environment Variables, mais `APP_URL=https://seu-dominio` e `DB_POOL_SIZE=1`. Na Vercel, a `DATABASE_URL` deve ser a do pooler (no Supabase, o Transaction pooler, porta 6543).
+3. **Cadastre as variáveis** do passo 3 em Settings → Environment Variables, mais `APP_URL=https://seu-dominio`, `DB_POOL_SIZE=1` e `CRON_SECRET` (ativa a sincronização diária da Steam, já agendada no `vercel.json`). Na Vercel, a `DATABASE_URL` deve ser a do pooler (no Supabase, o Transaction pooler, porta 6543).
 4. **Região:** o `vercel.json` fixa as funções em São Paulo (`gru1`). Se o seu banco estiver em outra região, troque para a mais próxima dele.
 5. **Publique:** `npx vercel --prod`.
 
@@ -82,7 +82,7 @@ Na Vercel, o storage precisa ser S3/R2/Supabase Storage: o disco de lá não é 
 
 Se algo falhar, a tabela "Problemas comuns" do README lista os erros que já apareceram e a solução de cada um.
 
-**Num VPS ou Docker:** veja a seção "Deploy" do README. O storage local funciona, desde que `uploads/` (e `data/`, se usar SQLite) fiquem num volume persistente.
+**Num VPS ou Docker:** veja a seção "Deploy" do README. Para a sincronização diária da Steam fora da Vercel, agende a rotina como mostra a seção "Sincronização com a Steam" (crontab, painel da hospedagem ou cron-job.org). O storage local funciona, desde que `uploads/` (e `data/`, se usar SQLite) fiquem num volume persistente.
 
 ## 5. No dia a dia
 

@@ -26,6 +26,8 @@ export const users = sqliteTable("users", {
   role: text("role").notNull().default("user"),
   nickname: text("nickname"),
   steamId: text("steam_id"),
+  // Última sincronização com a Steam (login, dashboard ou rotina diária).
+  steamSyncedAt: timestamp("steam_synced_at"),
   invitedBy: text("invited_by"),
   mustChangePassword: bool("must_change_password").notNull().default(false),
   createdAt: createdAt(),

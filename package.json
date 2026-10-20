@@ -11,7 +11,8 @@
     "db:generate": "tsx scripts/generate.ts",
     "db:migrate": "tsx scripts/migrate.ts",
     "create-admin": "tsx scripts/create-admin.ts",
-    "test:db": "tsx scripts/smoke-test.ts"
+    "test:db": "tsx scripts/smoke-test.ts",
+    "sync:steam": "tsx scripts/sync-steam.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.1146.0",

@@ -12,6 +12,7 @@ export interface CurrentUser {
   nickname: string | null;
   image: string | null;
   steamId: string | null;
+  steamSyncedAt: Date | null;
   isAdmin: boolean;
   /** Entrou com senha temporária do admin e ainda não definiu a própria. */
   mustChangePassword: boolean;
@@ -41,6 +42,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
       nickname: schema.users.nickname,
       image: schema.users.image,
       steamId: schema.users.steamId,
+      steamSyncedAt: schema.users.steamSyncedAt,
       role: schema.users.role,
       mustChangePassword: schema.users.mustChangePassword
     })

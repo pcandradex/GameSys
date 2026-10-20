@@ -15,6 +15,13 @@
       "when": 1792454146205,
       "tag": "0001_must_change_password",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1792463507570,
+      "tag": "0002_steam_synced_at",
+      "breakpoints": true
     }
   ]
 }

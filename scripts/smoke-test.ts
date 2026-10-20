@@ -13,7 +13,7 @@ import { loadScriptEnv } from "./env";
 loadScriptEnv({ allowProd: false });
 
 async function main() {
-  const { and, eq, inArray, isNotNull, isNull } = await import("drizzle-orm");
+  const { and, eq, gte, inArray, isNotNull, isNull } = await import("drizzle-orm");
   const { db, schema, currentDialect } = await import("../lib/db");
   const { auth, siteUrl } = await import("../lib/auth");
   const { listGames } = await import("../lib/data/games");
@@ -169,6 +169,87 @@ async function main() {
   const [before] = await db.select({ u: games.updatedAt, c: games.createdAt }).from(games).where(eq(games.title, "Hades"));
   assert.ok(before.c instanceof Date && Math.abs(before.c.getTime() - Date.now()) < 60_000, "createdAt em UTC correto");
   console.log("✓ datas corretas (sem desvio de fuso)");
+
+  // ── sincronização Steam (lib/steam-sync.ts) com a Steam simulada ──
+  {
+    const { syncAllUsers, syncUserLibrary, isSyncDue } = await import("../lib/steam-sync");
+    const range = (from: number, n: number) => Array.from({ length: n }, (_, i) => from + i);
+    const libraries: Record<string, number[]> = {
+      S1: [620, 1145360, ...range(10_000, 200)], // amigo: já tem 620 e 1145360
+      S2: [620, 400, ...range(20_000, 99)],
+      S3: range(30_000, 100),
+      S4: range(40_000, 100)
+    };
+    const calls: { owned: string[]; store: number } = { owned: [], store: 0 };
+    const realFetch = globalThis.fetch;
+
+    globalThis.fetch = (async (input: string | URL | Request) => {
+      const url = new URL(String(input instanceof Request ? input.url : input));
+      if (url.pathname.includes("GetOwnedGames")) {
+        const steamid = url.searchParams.get("steamid")!;
+        calls.owned.push(steamid);
+        if (!libraries[steamid]) return new Response("erro", { status: 500 });
+        return Response.json({ response: { games: libraries[steamid].map((appid) => ({ appid, name: `Jogo ${appid}` })) } });
+      }
+      if (url.pathname.includes("appdetails")) {
+        calls.store++;
+        const appid = url.searchParams.get("appids")!;
+        const shared = Number(appid) % 2 === 0;
+        return Response.json({ [appid]: { success: true, data: { categories: shared ? [{ description: "Family Sharing" }] : [] } } });
+      }
+      return realFetch(input as RequestInfo);
+    }) as typeof fetch;
+
+    process.env.STEAM_API_KEY ??= "chave-simulada";
+    const extra: string[] = [];
+    try {
+      await db.update(users).set({ steamId: "S1", steamSyncedAt: new Date(Date.now() - 86_400_000) }).where(eq(users.id, inviteeId));
+      for (const [i, steamId] of ["S2", "S3", "S4", "QUEBRADO"].entries()) {
+        const id = crypto.randomUUID();
+        extra.push(id);
+        await db.insert(users).values({ id, name: "", email: `steam${i}@test.dev`, steamId });
+      }
+
+      const first = await syncAllUsers();
+      assert.deepEqual([...calls.owned.slice(0, 4)].sort(), ["QUEBRADO", "S2", "S3", "S4"], "nunca sincronizados primeiro");
+      assert.equal(calls.owned[4], "S1", "depois o sincronizado há mais tempo");
+      assert.equal(first.synced, 4);
+      assert.equal(first.failed.length, 1, "perfil com erro não derruba a rotina");
+      assert.equal(first.gamesAdded, 101 + 100 + 100 + 200, "S1 só recebe os 200 novos");
+      assert.equal(first.familyChecked, 150, "teto de consultas à Store por execução");
+      assert.equal(calls.store, 150);
+      const [s2game] = await db.select({ shared: games.steamFamilyShared }).from(games)
+        .where(and(eq(games.createdBy, extra[0]), eq(games.steamAppid, 620)));
+      assert.equal(s2game.shared, true, "Family Sharing do appid 620 reaproveitado de outro usuário");
+      const [broken] = await db.select({ at: users.steamSyncedAt }).from(users).where(eq(users.id, extra[3]));
+      assert.equal(broken.at, null, "falha não marca como sincronizado");
+      console.log("✓ rotina diária: prioridade, incremental, teto da Store, reaproveitamento e falha isolada");
+
+      calls.owned = []; calls.store = 0;
+      const second = await syncAllUsers();
+      assert.equal(calls.owned[0], "QUEBRADO", "quem falhou vem primeiro na próxima");
+      assert.equal(second.gamesAdded, 0, "segunda execução não duplica jogos");
+      assert.ok(second.familyChecked > 0 && second.familyChecked <= 150, "continua checando Family Sharing pendente");
+      console.log("✓ segunda execução: sem duplicar, continua o Family Sharing pendente");
+
+      const timedOut = await syncAllUsers({ timeBudgetMs: -1 });
+      assert.equal(timedOut.synced, 0);
+      assert.equal(timedOut.pending, 5, "sem tempo, todos ficam para a próxima");
+      console.log("✓ orçamento de tempo: para antes e deixa o resto pendente");
+
+      const single = await syncUserLibrary(inviteeId, "S1", "chave-simulada", { familyLookups: 0 });
+      assert.ok("found" in single && single.added === 0 && single.familyChecked === 0);
+      assert.equal(isSyncDue(null), true);
+      assert.equal(isSyncDue(new Date()), false);
+      assert.equal(isSyncDue(new Date(Date.now() - 13 * 3_600_000)), true);
+      console.log("✓ sincronização individual e intervalo de 12 h do dashboard");
+    } finally {
+      globalThis.fetch = realFetch;
+      await db.delete(games).where(inArray(games.createdBy, extra));
+      await db.delete(games).where(and(eq(games.createdBy, inviteeId), gte(games.steamAppid, 10_000)));
+      await db.delete(users).where(inArray(users.id, extra));
+    }
+  }
 
   // ── exclusão de usuário (igual deleteUser) ──
   await db.delete(games).where(eq(games.createdBy, inviteeId));

@@ -1,0 +1,1 @@
+ALTER TABLE `users` ADD `steam_synced_at` datetime(3);

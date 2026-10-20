@@ -28,6 +28,8 @@ export const users = pgTable("users", {
   role: text("role").notNull().default("user"),
   nickname: text("nickname"),
   steamId: text("steam_id"),
+  // Última sincronização com a Steam (login, dashboard ou rotina diária).
+  steamSyncedAt: timestamp("steam_synced_at"),
   invitedBy: text("invited_by"),
   // Senha temporária definida pelo admin: o usuário precisa trocá-la no
   // próximo acesso antes de usar o app (ver lib/session.ts).
