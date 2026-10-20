@@ -178,7 +178,8 @@ gamesys/
 - Busca e filtros (família, recentes, por usuário)
 
 **Administração**
-- Convite por e-mail, status do convite (pendente/ativo) e reenvio
+- Convite por e-mail, status do convite (pendente/ativo/senha temporária) e reenvio
+- Sem depender de e-mail: criar usuário com **link para copiar** ou **senha temporária** (troca obrigatória no primeiro acesso), e as mesmas opções por usuário na lista, para redefinir o acesso de quem esqueceu a senha
 - Remoção de usuários (remove também os jogos e imagens deles)
 
 ## Limitações conhecidas

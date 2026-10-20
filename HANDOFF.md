@@ -46,7 +46,7 @@ Abra `http://localhost:3000` e entre com o admin criado. Se o login funcionar e 
 
 Se rodar em outra porta ou endereço, ajuste o `APP_URL` no `.env.local` para o mesmo valor (ex.: `APP_URL=http://localhost:3001`). Caso contrário, o login falha com "Invalid origin".
 
-Sem SMTP configurado, os e-mails de convite e de recuperação de senha **não são enviados**: o link aparece no terminal onde está rodando o `npm run dev`.
+Sem SMTP configurado, os e-mails de convite e de recuperação de senha **não são enviados**: o link aparece no terminal onde está rodando o `npm run dev`. Em `/admin` você também pode criar usuários com **link para copiar** ou **senha temporária**, sem depender de e-mail.
 
 ## 3. Contas que você vai precisar para produção
 
@@ -87,7 +87,8 @@ Na Vercel, o storage precisa ser S3/R2: o disco de lá não é persistente e as 
 
 ## 5. No dia a dia
 
-- **Novos usuários:** pela tela `/admin`. Não há cadastro público.
+- **Novos usuários:** pela tela `/admin`, com convite por e-mail, link para copiar ou senha temporária. Não há cadastro público.
+- **Alguém esqueceu a senha e o e-mail não chega:** em `/admin`, use “Gerar link” ou “Senha temporária” na linha do usuário.
 - **Mudar o banco (schema):** edite os três arquivos em `lib/db/schema/` e rode `npm run db:generate -- --name descricao`. Depois, `npm run db:migrate` em cada ambiente.
 - **Antes de publicar uma mudança:** rode `npm run typecheck`, `npm run lint` e `npm run build`.
 - **Testar contra um banco descartável:** `npm run test:db -- --reset`. Ele **apaga todos os dados**, então nunca aponte para produção.
