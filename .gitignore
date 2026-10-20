@@ -19,3 +19,6 @@ tsconfig.tsbuildinfo
 
 # Config local do Supabase CLI (legado)
 supabase/.temp
+
+# Conexão MCP local com o Supabase (aponta para um projeto específico)
+.mcp.json

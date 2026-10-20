@@ -15,6 +15,13 @@
       "when": 1792454143898,
       "tag": "0001_must_change_password",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792459462866,
+      "tag": "0002_supabase_lockdown",
+      "breakpoints": true
     }
   ]
 }
